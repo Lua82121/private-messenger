@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приватный мессенджер</title>
+    <style>
+        /* Добавьте CSS стили из предыдущего примера */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-form" class="form-container">
+            <div class="header">
+                <h1>Приватный мессенджер</h1>
+                <p>Только для вас и вашего друга</p>
+            </div>
+            <div class="form-group">
+                <label for="username">Ваше имя</label>
+                <input type="text" id="username" placeholder="Введите ваше имя">
+            </div>
+            <button id="login-btn">Войти в чат</button>
+            <div id="login-message"></div>
+        </div>
+        
+        <div id="chat-container" class="chat-container" style="display:none">
+            <div class="chat-header">
+                <h2>Приватный чат</h2>
+                <button id="logout-btn">Выйти</button>
+            </div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Введите сообщение...">
+                <button id="send-btn">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://ваш-сервер.herokuapp.com'; // Замените на ваш URL
+        
+        let currentUser = '';
+
+        // Вход в чат
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            if (!username) return;
+            
+            currentUser = username;
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'flex';
+            
+            await loadMessages();
+            startPolling();
+        });
+
+        // Отправка сообщения
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        
+        async function sendMessage() {
+            const text = document.getElementById('message-input').value.trim();
+            if (!text) return;
+            
+            try {
+                await fetch(API_URL + '/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user: currentUser, text: text })
+                });
+                
+                document.getElementById('message-input').value = '';
+                await loadMessages();
+            } catch (error) {
+                console.error('Ошибка отправки:', error);
+            }
+        }
+
+        // Загрузка сообщений
+        async function loadMessages() {
+            try {
+                const response = await fetch(API_URL + '/messages');
+                const messages = await response.json();
+                
+                const chat = document.getElementById('chat-messages');
+                chat.innerHTML = '';
+                
+                messages.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = `message ${msg.user === currentUser ? 'my-message' : 'friend-message'}`;
+                    div.innerHTML = `
+                        <div class="message-sender">${msg.user}</div>
+                        <div class="message-text">${msg.text}</div>
+                        <div class="message-time">${new Date(msg.time).toLocaleTimeString()}</div>
+                    `;
+                    chat.appendChild(div);
+                });
+                
+                chat.scrollTop = chat.scrollHeight;
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+            }
+        }
+
+        // Автообновление сообщений
+        function startPolling() {
+            setInterval(loadMessages, 2000);
+        }
+    </script>
+</body>
+</html>
